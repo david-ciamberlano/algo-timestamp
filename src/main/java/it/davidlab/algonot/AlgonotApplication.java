@@ -1,0 +1,13 @@
+package it.davidlab.algonot;
+
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+
+@SpringBootApplication
+public class AlgonotApplication {
+
+	public static void main(String[] args) {
+		SpringApplication.run(AlgonotApplication.class, args);
+	}
+
+}

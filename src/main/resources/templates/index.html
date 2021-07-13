@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="https://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Algonot</title>
+    <link href="/css/main.css" rel="stylesheet">
+</head>
+<body>
+
+    <form method="POST" enctype="multipart/form-data" th:action="@{/notarize}">
+        <label for="file">File to upload:</label>
+        <input id="file"  type="file" name="file" />
+
+        <input id="submit" type="submit" value="Upload" />
+    </form>
+
+</body>
+</html>
