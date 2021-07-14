@@ -13,18 +13,17 @@ import com.algorand.algosdk.v2.client.model.PendingTransactionResponse;
 import com.algorand.algosdk.v2.client.model.TransactionParametersResponse;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import it.davidlab.algonot.dom.AlgoNotarizationCert;
-import it.davidlab.algonot.dom.AlgoNotarizationReq;
+import it.davidlab.algonot.dom.NotarizationCert;
+import it.davidlab.algonot.dom.BlockchainData;
 import org.apache.commons.codec.digest.DigestUtils;
-import org.bouncycastle.util.Strings;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
-import org.springframework.web.multipart.MultipartFile;
 
 import javax.annotation.PostConstruct;
 import java.io.*;
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
@@ -32,12 +31,13 @@ import java.time.format.DateTimeFormatter;
 import java.util.Date;
 import java.util.Map;
 import java.util.zip.ZipEntry;
-import java.util.zip.ZipOutputStream;
+import java.util.zip.ZipInputStream;
+
 
 @Service
 public class AlgorandService {
 
-    Logger logger = LoggerFactory.getLogger(AlgorandService.class);
+    private final Logger logger = LoggerFactory.getLogger(AlgorandService.class);
 
     @Value("${algorand.api.address}")
     private String ALGOD_API_ADDR;
@@ -67,31 +67,25 @@ public class AlgorandService {
     }
 
 
-    public void notarize(MultipartFile docFile) {
+    public NotarizationCert notarize(String docName, long docSize, byte[] docBytes) {
 
-        String docName = docFile.getOriginalFilename();
         logger.info("Try notarization for: {}", docName);
 
-        long docSize = docFile.getSize();
-        String messageDigest;
-        try {
-            messageDigest = DigestUtils.sha256Hex (docFile.getBytes());
-        }
-        catch (IOException ex) {
-            logger.error("File Exception", ex);
-            throw new RuntimeException("Can't read file Exception", ex);
-        }
+        String packetName = DigestUtils.sha256Hex(docName.getBytes(StandardCharsets.UTF_8));
+        String documentHash = DigestUtils.sha256Hex(docBytes);
 
-        AlgoNotarizationReq notarizationRequest = new AlgoNotarizationReq(messageDigest, docName, docSize, new Date());
+        BlockchainData blockchainData = new BlockchainData(documentHash, packetName);
 
         // Build the json object
         Gson gson = new GsonBuilder().setDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ").create();
-        String algoJsonRequest = gson.toJson(notarizationRequest);
+        String algoJsonRequest = gson.toJson(blockchainData);
 
         String txId;
         Long txRound;
         String txDate;
         try {
+
+            // Notarize the document (write blockchainData on the blockchain)
             AlgodClient algoClient = new AlgodClient(ALGOD_API_ADDR, ALGOD_PORT, ALGOD_API_TOKEN);
             Address algoAddress = new Address(ACC_ADDRESS);
             Account algoAccount = new Account(ACC_PASSFRASE);
@@ -123,10 +117,9 @@ public class AlgorandService {
             logger.info("Notarized: {} - date: {}", docName, txDate);
 
             // create the json certificate with the registration data
-            AlgoNotarizationCert notarizationCert = new AlgoNotarizationCert(notarizationRequest, ACC_ADDRESS, txId);
-            String algoJsonCert = gson.toJson(notarizationCert);
-
-            createPacket(txRound, docName, docFile.getBytes(), algoJsonCert);
+            NotarizationCert notarizationCert =
+                    new NotarizationCert(blockchainData, docName, docSize, ACC_ADDRESS, txId, txRound);
+            return notarizationCert;
 
         } catch (Exception ex) {
             logger.error("Algorand Client creation Exception", ex);
@@ -134,31 +127,50 @@ public class AlgorandService {
         }
     }
 
-    private void createPacket (long blockNum, String docName, byte[] docBytes, String certificate ) {
 
-        String zipName = "algonot-" + blockNum + ".zip";
-        String certName = "certificate-" + blockNum + ".json";
-        try (FileOutputStream fos = new FileOutputStream(zipName);
-                ZipOutputStream zipOut = new ZipOutputStream(fos)) {
+    public boolean verify(byte[] packet) throws IOException {
 
-            ZipEntry zipEntryDoc = new ZipEntry(docName);
-            zipOut.putNextEntry(zipEntryDoc);
+        byte[] certificateContent = new byte[0];
+        byte[] documentContent = new byte[0];
 
-            zipOut.write(docBytes, 0, docBytes.length);
+        //extract info from the zip
+        try (ByteArrayInputStream zipIS = new ByteArrayInputStream(packet);
+             ZipInputStream zis = new ZipInputStream(zipIS)) {
 
-            ZipEntry zipEntryCert = new ZipEntry(certName);
-            zipOut.putNextEntry(zipEntryCert);
+            ZipEntry zipEntry = zis.getNextEntry();
+            while (zipEntry != null) {
+                if (!zipEntry.isDirectory()) {
+                    if ("certificate.json".equals(zipEntry.getName())) {
+                        certificateContent = zis.readAllBytes();
+                    } else {
+                        documentContent = zis.readAllBytes();
+                    }
+                }
 
-            byte[] certBytes = Strings.toByteArray(certificate);
-            zipOut.write(certBytes, 0, certBytes.length);
-
+                zipEntry = zis.getNextEntry();
+            }
         }
-        catch (IOException ex) {
-            logger.error("Algorand ZIP creation Exception", ex);
+
+        if (certificateContent.length == 0 || documentContent.length == 0) {
+            throw new IOException("Wrong packet");
         }
 
+        Reader certReader = new InputStreamReader(new ByteArrayInputStream(certificateContent),StandardCharsets.UTF_8);
+        NotarizationCert certificate = new Gson().fromJson(certReader, NotarizationCert.class);
+
+        if ( certificate.checkNull()) {
+            throw new IOException("Wrong certificate");
+        }
+
+        logger.info("Same Size: " + (certificate.getDocSize() == documentContent.length));
+
+        String documentHash = DigestUtils.sha256Hex(documentContent);
+        logger.info("Same Hash: " + (certificate.getBlockchainData().getDocumentHash().equals(documentHash)) );
+
+        logger.info(certificate.getOriginalFileName());
+
+        return true;
     }
-
 
 
     /**
