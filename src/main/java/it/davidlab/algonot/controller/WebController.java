@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.util.Optional;
 
 @Controller
 public class WebController {
@@ -27,17 +28,7 @@ public class WebController {
         this.storeService = storeService;
     }
 
-    @GetMapping("/algonot")
-    public String index(Model model) {
-        return "index";
-    }
-
-    @GetMapping("/algover")
-    public String algover(Model model) {
-        return "verify";
-    }
-
-    @PostMapping("/notarize")
+    @PostMapping("notarize")
     public String notarizization(@RequestParam("file") MultipartFile file, Model model) {
 
         byte[] docBytes;
@@ -56,20 +47,35 @@ public class WebController {
         // create the Zip packet
         storeService.createPacket(docBytes, notarizationCert);
 
-        return "index";
+        model.addAttribute("message","Notarization completed");
+
+        return "notarization-result";
     }
 
 
-    @PostMapping("/doVerify")
+    @PostMapping("verify")
     public String verify(@RequestParam("file") MultipartFile file, Model model) {
+
+        byte[] docBytes;
         try {
-            algorandService.verify(file.getBytes());
+            docBytes = file.getBytes();
         }
         catch (IOException e) {
-            logger.error("Exception", e);
+            logger.error("Algorand Client creation Exception", e);
+            throw new RuntimeException("Client Exception", e);
         }
 
-        return "index";
+        Optional<NotarizationCert> certOptional =  algorandService.verify(docBytes);
+
+        certOptional.ifPresentOrElse(
+                cert -> {
+                    model.addAttribute("certInfo",cert);
+                    model.addAttribute("valid", true);},
+                () -> {
+                    model.addAttribute("valid", false);
+                });
+
+        return "verification-result";
     }
 
 }

@@ -3,16 +3,46 @@
 <head>
     <meta charset="UTF-8">
     <title>Algonot</title>
+
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css"
+          integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
+
     <link href="/css/main.css" rel="stylesheet">
 </head>
 <body>
 
-    <form method="POST" enctype="multipart/form-data" th:action="@{/notarize}">
-        <label for="file">File to upload:</label>
-        <input id="file"  type="file" name="file" />
+<div class="container">
+    <h1>Algonot</h1>
+</div>
 
-        <input id="submit" type="submit" value="Upload" />
+<div class="container rounded border shadow p-3 my-3">
+    <h2>Notarize Document</h2>
+    <form method="POST" enctype="multipart/form-data" th:action="@{/notarize}">
+        <div class="row">
+            <div class="col-10">
+                <input id="file" class="form-control" type="file" name="file"/>
+            </div>
+            <div class="col-2">
+                <button type="submit" class="btn btn-primary">Notarize</button>
+            </div>
+
+        </div>
     </form>
+</div>
+
+<div class="container rounded border shadow p-3 my-3">
+    <h2>Verify Packet</h2>
+    <form method="POST" enctype="multipart/form-data" th:action="@{/verify}">
+        <div class="row">
+            <div class="col-10">
+                <input id="filev" class="form-control" type="file" name="file"/>
+            </div>
+            <div class="col-2">
+                <button type="submit" class="btn btn-primary">Verify</button>
+            </div>
+        </div>
+    </form>
+</div>
 
 </body>
 </html>

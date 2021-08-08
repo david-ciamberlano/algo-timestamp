@@ -29,7 +29,9 @@ import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
@@ -38,6 +40,11 @@ import java.util.zip.ZipInputStream;
 public class AlgorandService {
 
     private final Logger logger = LoggerFactory.getLogger(AlgorandService.class);
+
+    @Value("${application.name}")
+    private String APP_NAME;
+    @Value("${application.version}")
+    private String APP_VERSION;
 
     @Value("${algorand.api.address}")
     private String ALGOD_API_ADDR;
@@ -74,7 +81,7 @@ public class AlgorandService {
         String packetName = DigestUtils.sha256Hex(docName.getBytes(StandardCharsets.UTF_8));
         String documentHash = DigestUtils.sha256Hex(docBytes);
 
-        BlockchainData blockchainData = new BlockchainData(documentHash, packetName);
+        BlockchainData blockchainData = new BlockchainData(APP_NAME, APP_VERSION, packetName, documentHash);
 
         // Build the json object
         Gson gson = new GsonBuilder().setDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ").create();
@@ -108,7 +115,7 @@ public class AlgorandService {
 
             Map<String, Object> block = algoClient.GetBlock(txRound).execute().body().block;
 
-            Integer timestamp = (Integer)block.get("ts");
+            Integer timestamp = (Integer) block.get("ts");
             DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSZ");
             txDate = ZonedDateTime
                     .ofInstant(Instant.ofEpochSecond(timestamp), ZoneId.systemDefault())
@@ -128,10 +135,9 @@ public class AlgorandService {
     }
 
 
-    public boolean verify(byte[] packet) throws IOException {
+    public Optional<NotarizationCert> verify(byte[] packet) {
 
-        byte[] certificateContent = new byte[0];
-        byte[] documentContent = new byte[0];
+        Map<String, byte[]> packetItems = new HashMap<>();
 
         //extract info from the zip
         try (ByteArrayInputStream zipIS = new ByteArrayInputStream(packet);
@@ -140,36 +146,48 @@ public class AlgorandService {
             ZipEntry zipEntry = zis.getNextEntry();
             while (zipEntry != null) {
                 if (!zipEntry.isDirectory()) {
-                    if ("certificate.json".equals(zipEntry.getName())) {
-                        certificateContent = zis.readAllBytes();
-                    } else {
-                        documentContent = zis.readAllBytes();
-                    }
+
+                    packetItems.put(zipEntry.getName(), zis.readAllBytes());
                 }
 
                 zipEntry = zis.getNextEntry();
             }
+        } catch (IOException e) {
+            logger.error(e.getMessage());
+            return Optional.empty();
         }
 
-        if (certificateContent.length == 0 || documentContent.length == 0) {
-            throw new IOException("Wrong packet");
+        if (!packetItems.containsKey("certificate.json")) {
+            logger.error("Wrong packet");
+            return Optional.empty();
         }
 
-        Reader certReader = new InputStreamReader(new ByteArrayInputStream(certificateContent),StandardCharsets.UTF_8);
+        Reader certReader = new InputStreamReader(new ByteArrayInputStream(packetItems.get("certificate.json"))
+                , StandardCharsets.UTF_8);
         NotarizationCert certificate = new Gson().fromJson(certReader, NotarizationCert.class);
 
-        if ( certificate.checkNull()) {
-            throw new IOException("Wrong certificate");
+        // verify if the certificate is valid
+        if (certificate.checkNull()) {
+            logger.error("Empty certificate error");
+            return Optional.empty();
         }
 
-        logger.info("Same Size: " + (certificate.getDocSize() == documentContent.length));
+        if (!packetItems.containsKey(certificate.getOriginalFileName())) {
+            logger.error("Wrong certificate error");
+            return Optional.empty();
+        }
 
+        byte[] documentContent = packetItems.get(certificate.getOriginalFileName());
         String documentHash = DigestUtils.sha256Hex(documentContent);
-        logger.info("Same Hash: " + (certificate.getBlockchainData().getDocumentHash().equals(documentHash)) );
 
-        logger.info(certificate.getOriginalFileName());
+        // verify if the info in the certificate are the same stored on the Blockchain
+        boolean verified = (certificate.getDocSize() == documentContent.length)
+                && (certificate.getBlockchainData().getDocumentHash().equals(documentHash));
 
-        return true;
+        logger.info("{} - verified: {}", certificate.getOriginalFileName(), verified);
+
+        // return the certificate or an empty optional if the packet is not verified
+        return verified? Optional.of(certificate):Optional.empty();
     }
 
 
@@ -188,8 +206,7 @@ public class AlgorandService {
         long lastRound;
         if (statusResponse.isSuccessful()) {
             lastRound = statusResponse.body().lastRound + 1L;
-        }
-        else {
+        } else {
             throw new IllegalStateException("Cannot get node status");
         }
 
@@ -204,8 +221,7 @@ public class AlgorandService {
                     if (!client.WaitForBlock(currentRound).execute().isSuccessful()) {
                         throw new Exception();
                     }
-                }
-                else {
+                } else {
                     return;
                 }
             } else {
