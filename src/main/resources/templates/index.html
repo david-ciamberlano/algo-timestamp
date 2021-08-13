@@ -2,46 +2,76 @@
 <html lang="en" xmlns:th="https://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
-    <title>Algonot</title>
-
-    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css"
-          integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
+    <title>AlgoTimestamp</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.0/dist/css/bootstrap.min.css" rel="stylesheet"
+          integrity="sha384-KyZXEAg3QhqLMpG8r+8fhAXLRk2vvoC2f3B09zVXn8CA5QIVfZOJ3BCsw2P0p/We" crossorigin="anonymous">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.0/dist/js/bootstrap.bundle.min.js"
+            integrity="sha384-U1DAWAznBHeqEIlVSCgzq+c9gqGAJn5c/t99JyeKa9xxaYpSvHU5awsuZVVFIhvj"
+            crossorigin="anonymous"></script>
 
     <link href="/css/main.css" rel="stylesheet">
 </head>
 <body>
 
-<div class="container">
-    <h1>Algonot</h1>
-</div>
+<nav class="navbar navbar-light bg-primary">
+    <div class="container-fluid">
+        <a class="navbar-brand mx-auto mb-0 text-light" href="/">AlgoTimestamp
+            <small class="text-warning"> - Notarization on the Algorand blockchain</small></a>
+    </div>
+</nav>
 
-<div class="container rounded border shadow p-3 my-3">
-    <h2>Notarize Document</h2>
+<div class="container rounded border p-3 my-5">
     <form method="POST" enctype="multipart/form-data" th:action="@{/notarize}">
         <div class="row">
-            <div class="col-10">
-                <input id="file" class="form-control" type="file" name="file"/>
+            <div class="col">
+                <h2 class="text-primary">Notarize a Document</h2>
             </div>
-            <div class="col-2">
+        </div>
+        <div class="row">
+            <div class="col-10">
+                <input id="notFile" class="form-control" type="file" name="file"/>
+            </div>
+            <div class="col-2 d-grid" data-bs-toggle="modal" data-bs-target="#exampleModal">
                 <button type="submit" class="btn btn-primary">Notarize</button>
             </div>
-
         </div>
     </form>
 </div>
 
-<div class="container rounded border shadow p-3 my-3">
-    <h2>Verify Packet</h2>
+<div class="container rounded border p-3 my-5">
+    <h2 class="text-primary">Verify Packet</h2>
     <form method="POST" enctype="multipart/form-data" th:action="@{/verify}">
         <div class="row">
             <div class="col-10">
-                <input id="filev" class="form-control" type="file" name="file"/>
+                <input id="verFile" class="form-control" type="file" name="file"/>
             </div>
-            <div class="col-2">
+            <div class="col-2 d-grid">
                 <button type="submit" class="btn btn-primary">Verify</button>
             </div>
         </div>
     </form>
+</div>
+
+
+<!-- Modal -->
+<div class="modal fade" id="exampleModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="exampleModalLabel">Please wait</h5>
+            </div>
+            <div class="modal-body">
+                <div class="d-flex justify-content-center">
+                    <div class="spinner-grow width: 3rem; height: 3rem;" role="status">
+                        <span class="visually-hidden">working...</span>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
 </div>
 
 </body>

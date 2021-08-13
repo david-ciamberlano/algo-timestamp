@@ -29,4 +29,14 @@ public class BlockchainData {
     public String getPacketName() {
         return packetName;
     }
+
+    @Override
+    public String toString() {
+        return "BlockchainData{" +
+                "appName='" + appName + '\'' +
+                ", appVersion='" + appVersion + '\'' +
+                ", packetName='" + packetName + '\'' +
+                ", documentHash='" + documentHash + '\'' +
+                '}';
+    }
 }

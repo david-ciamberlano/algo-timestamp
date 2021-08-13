@@ -7,23 +7,24 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
-import java.io.FileOutputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
 @Service
-public class StoreService {
+public class StoreService implements StoreServiceInterface {
 
     private final Logger logger = LoggerFactory.getLogger(StoreService.class);
 
-    public void createPacket (byte[] docBytes, NotarizationCert cert) {
+    @Override
+    public byte[] createPacket(byte[] docBytes, NotarizationCert cert) {
 
-        String zipName = cert.getBlockchainData().getPacketName() + ".zip";
         String certName = "certificate.json";
-        try (FileOutputStream fos = new FileOutputStream(zipName);
-             ZipOutputStream zipOut = new ZipOutputStream(fos)) {
+
+        ByteArrayOutputStream fos = new ByteArrayOutputStream();
+        try (ZipOutputStream zipOut = new ZipOutputStream(fos)) {
 
             ZipEntry zipEntryDoc = new ZipEntry(cert.getOriginalFileName());
             zipOut.putNextEntry(zipEntryDoc);
@@ -36,11 +37,12 @@ public class StoreService {
             Gson gson = new GsonBuilder().setDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ").create();
             byte[] certBytes = gson.toJson(cert).getBytes(StandardCharsets.UTF_8);
             zipOut.write(certBytes, 0, certBytes.length);
-
         }
         catch (IOException ex) {
             logger.error("Algorand ZIP creation Exception", ex);
         }
+
+        return fos.toByteArray();
 
     }
 

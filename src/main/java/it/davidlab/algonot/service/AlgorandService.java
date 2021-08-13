@@ -8,13 +8,12 @@ import com.algorand.algosdk.util.Encoder;
 import com.algorand.algosdk.v2.client.common.AlgodClient;
 import com.algorand.algosdk.v2.client.common.IndexerClient;
 import com.algorand.algosdk.v2.client.common.Response;
-import com.algorand.algosdk.v2.client.model.NodeStatusResponse;
-import com.algorand.algosdk.v2.client.model.PendingTransactionResponse;
-import com.algorand.algosdk.v2.client.model.TransactionParametersResponse;
+import com.algorand.algosdk.v2.client.model.*;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import it.davidlab.algonot.dom.NotarizationCert;
 import it.davidlab.algonot.dom.BlockchainData;
+import it.davidlab.algonot.exception.ApiException;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -22,22 +21,16 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.PostConstruct;
-import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.Date;
-import java.util.HashMap;
 import java.util.Map;
-import java.util.Optional;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipInputStream;
 
 
 @Service
-public class AlgorandService {
+public class AlgorandService implements BlockchainServiceInterface {
 
     private final Logger logger = LoggerFactory.getLogger(AlgorandService.class);
 
@@ -74,14 +67,17 @@ public class AlgorandService {
     }
 
 
+    @Override
     public NotarizationCert notarize(String docName, long docSize, byte[] docBytes) {
 
-        logger.info("Try notarization for: {}", docName);
+        logger.info("Notarize on the blockchain");
 
-        String packetName = DigestUtils.sha256Hex(docName.getBytes(StandardCharsets.UTF_8));
-        String documentHash = DigestUtils.sha256Hex(docBytes);
+        String docHash = DigestUtils.sha256Hex(docBytes);
 
-        BlockchainData blockchainData = new BlockchainData(APP_NAME, APP_VERSION, packetName, documentHash);
+        String packetCodeName = ACC_ADDRESS + docHash;
+        String packetName = DigestUtils.sha256Hex(packetCodeName.getBytes(StandardCharsets.UTF_8));
+
+        BlockchainData blockchainData = new BlockchainData(APP_NAME, APP_VERSION, packetName, docHash);
 
         // Build the json object
         Gson gson = new GsonBuilder().setDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ").create();
@@ -121,73 +117,41 @@ public class AlgorandService {
                     .ofInstant(Instant.ofEpochSecond(timestamp), ZoneId.systemDefault())
                     .format(dateFormatter);
 
-            logger.info("Notarized: {} - date: {}", docName, txDate);
+            logger.info("Document Notarized - date: {}", txDate);
 
             // create the json certificate with the registration data
             NotarizationCert notarizationCert =
                     new NotarizationCert(blockchainData, docName, docSize, ACC_ADDRESS, txId, txRound);
+
             return notarizationCert;
 
         } catch (Exception ex) {
-            logger.error("Algorand Client creation Exception", ex);
-            throw new RuntimeException("Client Exception", ex);
+            logger.error("Algorand Notarization Exception", ex);
+            throw new ApiException("Algorand NotarizationException");
+
         }
     }
 
 
-    public Optional<NotarizationCert> verify(byte[] packet) {
 
-        Map<String, byte[]> packetItems = new HashMap<>();
+    public BlockchainData getTxData (String txId) {
 
-        //extract info from the zip
-        try (ByteArrayInputStream zipIS = new ByteArrayInputStream(packet);
-             ZipInputStream zis = new ZipInputStream(zipIS)) {
+        // get info from algorand transaction
+        BlockchainData blockchainData;
 
-            ZipEntry zipEntry = zis.getNextEntry();
-            while (zipEntry != null) {
-                if (!zipEntry.isDirectory()) {
+        try {
+            com.algorand.algosdk.v2.client.model.Transaction tx = indexerClient.searchForTransactions().txid(txId).execute().body().transactions.get(0);
 
-                    packetItems.put(zipEntry.getName(), zis.readAllBytes());
-                }
+            String noteObject = new String(tx.note);
+            Gson gson = new GsonBuilder().setDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ").create();
+            blockchainData = gson.fromJson(noteObject, BlockchainData.class);
 
-                zipEntry = zis.getNextEntry();
-            }
-        } catch (IOException e) {
-            logger.error(e.getMessage());
-            return Optional.empty();
+        } catch (Exception ex) {
+            logger.error("Algorand Client check Exception", ex);
+            throw new RuntimeException("Document content is null", ex);
         }
 
-        if (!packetItems.containsKey("certificate.json")) {
-            logger.error("Wrong packet");
-            return Optional.empty();
-        }
-
-        Reader certReader = new InputStreamReader(new ByteArrayInputStream(packetItems.get("certificate.json"))
-                , StandardCharsets.UTF_8);
-        NotarizationCert certificate = new Gson().fromJson(certReader, NotarizationCert.class);
-
-        // verify if the certificate is valid
-        if (certificate.checkNull()) {
-            logger.error("Empty certificate error");
-            return Optional.empty();
-        }
-
-        if (!packetItems.containsKey(certificate.getOriginalFileName())) {
-            logger.error("Wrong certificate error");
-            return Optional.empty();
-        }
-
-        byte[] documentContent = packetItems.get(certificate.getOriginalFileName());
-        String documentHash = DigestUtils.sha256Hex(documentContent);
-
-        // verify if the info in the certificate are the same stored on the Blockchain
-        boolean verified = (certificate.getDocSize() == documentContent.length)
-                && (certificate.getBlockchainData().getDocumentHash().equals(documentHash));
-
-        logger.info("{} - verified: {}", certificate.getOriginalFileName(), verified);
-
-        // return the certificate or an empty optional if the packet is not verified
-        return verified? Optional.of(certificate):Optional.empty();
+        return blockchainData;
     }
 
 
@@ -198,6 +162,7 @@ public class AlgorandService {
      * @param timeout
      * @throws Exception
      */
+    @Override
     public void waitForConfirmation(String txId, int timeout) throws Exception {
 
         Long txConfirmedRound = -1L;

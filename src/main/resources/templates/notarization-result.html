@@ -3,12 +3,77 @@
 <head>
     <meta charset="UTF-8">
     <title>Algonot - Notarization Result</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.0/dist/css/bootstrap.min.css" rel="stylesheet"
+          integrity="sha384-KyZXEAg3QhqLMpG8r+8fhAXLRk2vvoC2f3B09zVXn8CA5QIVfZOJ3BCsw2P0p/We" crossorigin="anonymous">
     <link href="/css/main.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.5.0/font/bootstrap-icons.css">
 </head>
 <body>
 
-<div id="message" th:text="${message}"></div>
+<div class="container rounded border shadow p-3 my-3">
+    <!--    If packet is valid-->
+    <div th:if="${valid}">
+        <div class="row">
+            <div class="col">
+                <p class="h1 text-success text-center">Your document has been notarized.</p>
+                <hr class="my-4">
+                <p class="lead text-primary">Certificate Information: </p>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-2">
+                <p class="text-end fw-bold" th:text="'Document Name: '"></p>
+            </div>
+            <div class="col-10">
+                <p th:text="${certInfo.originalFileName}"></p>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-2">
+                <p class="text-end fw-bold" th:text="'Document Size: '"></p>
+            </div>
+            <div class="col-10">
+                <p th:text="${certInfo.docSize}"></p>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-2">
+                <p class="text-end fw-bold" th:text="'Packet Name: '"></p>
+            </div>
+            <div class="col-10">
+                <p th:text="${certInfo.blockchainData.packetName} + '.zip'"></p>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-2">
+                <p class="text-end fw-bold" th:text="'Document Hash: '"></p>
+            </div>
+            <div class="col-10">
+                <p th:text="${certInfo.blockchainData.documentHash}"></p>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-2">
+                <p class="text-end fw-bold" th:text="'Transaction Id: '"></p>
+            </div>
+            <div class="col-10">
+                <a th:href="@{${explorerUrl}+${certInfo.txId}}"><span th:text="${certInfo.txId}"></span><i class="bi bi-link"></i></a>
+            </div>
+        </div>
+    </div>
+    <!--    if packet is not valid-->
+    <div th:unless="${valid}">
+        <div class="container rounded border p-3 my-3">
+            <h1 class="text-danger">The packet is not Valid</h1>
+        </div>
+    </div>
 
+    <div class="row">
+        <div class="col-2 offset-5 mt-3">
+            <a th:href="@{/}" class="btn btn-primary"><i class="bi bi-arrow-left-square"></i> Back</a>
+        </div>
+    </div>
+</div>
 
 </body>
 </html>

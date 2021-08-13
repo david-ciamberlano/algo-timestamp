@@ -56,4 +56,15 @@ public class NotarizationCert {
     }
 
 
+    @Override
+    public String toString() {
+        return "NotarizationCert{" +
+                "blockchainData=" + blockchainData +
+                ", originalFileName='" + originalFileName + '\'' +
+                ", docSize=" + docSize +
+                ", creatorAddr='" + creatorAddr + '\'' +
+                ", txId='" + txId + '\'' +
+                ", blockNum=" + blockNum +
+                '}';
+    }
 }
