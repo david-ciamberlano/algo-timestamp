@@ -2,7 +2,7 @@ package it.davidlab.algonot.service;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import it.davidlab.algonot.dom.NotarizationCert;
+import it.davidlab.algonot.domain.NotarizationCert;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -14,11 +14,10 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
 @Service
-public class StoreService implements StoreServiceInterface {
+public class StoreService {
 
     private final Logger logger = LoggerFactory.getLogger(StoreService.class);
 
-    @Override
     public byte[] createPacket(byte[] docBytes, NotarizationCert cert) {
 
         String certName = "certificate.json";

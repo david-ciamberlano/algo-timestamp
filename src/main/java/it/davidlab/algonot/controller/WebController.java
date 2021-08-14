@@ -1,11 +1,12 @@
 package it.davidlab.algonot.controller;
 
 import com.google.gson.Gson;
-import it.davidlab.algonot.dom.BlockchainData;
-import it.davidlab.algonot.dom.NotarizationCert;
+
+import it.davidlab.algonot.domain.NotarizationCert;
+import it.davidlab.algonot.dto.VerificationData;
 import it.davidlab.algonot.exception.ApiException;
-import it.davidlab.algonot.service.BlockchainServiceInterface;
-import it.davidlab.algonot.service.StoreServiceInterface;
+import it.davidlab.algonot.service.AlgorandService;
+import it.davidlab.algonot.service.StoreService;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
@@ -22,6 +23,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.*;
 import java.nio.charset.StandardCharsets;
+import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -39,10 +41,10 @@ public class WebController {
     @Value("${algorand.explorer.url}")
     private String EXPLORER_URL;
 
-    private final BlockchainServiceInterface algorandService;
-    private final StoreServiceInterface storeService;
+    private final AlgorandService algorandService;
+    private final StoreService storeService;
 
-    public WebController(BlockchainServiceInterface algorandService, StoreServiceInterface storeService) {
+    public WebController(AlgorandService algorandService, StoreService storeService) {
         this.algorandService = algorandService;
         this.storeService = storeService;
     }
@@ -64,6 +66,7 @@ public class WebController {
         catch (IOException e) {
             logger.error("Algorand file reading Exception", e);
             model.addAttribute("valid", false);
+            model.addAttribute("message", e.getMessage());
             return "notarization-result";
         }
 
@@ -71,6 +74,7 @@ public class WebController {
         if (docBytes.length == 0) {
             logger.error("Error: File cannot be empty");
             model.addAttribute("valid", false);
+            model.addAttribute("message", "File cannot be empty");
             return "notarization-result";
         }
 
@@ -80,8 +84,11 @@ public class WebController {
 
         // create the Zip packet
         byte[] zipPacketBytes = storeService.createPacket(docBytes, notarizationCert);
-        String zipFileName = notarizationCert.getBlockchainData().getPacketName() + ".zip";
 
+        // save the packet
+
+        String zipFileName = notarizationCert.getBlockchainData().getPacketCode()
+                + "-" + Instant.now().getEpochSecond() + ".zip";
         File zipFile = new File(zipFileName);
 
         try {
@@ -90,6 +97,7 @@ public class WebController {
         catch (IOException e) {
             logger.error("Algorand Client creation Exception", e);
             notarizationSuccess = false;
+            model.addAttribute("message", "File cannot be empty");
         }
 
         if (notarizationSuccess) {
@@ -117,7 +125,7 @@ public class WebController {
             throw new ApiException("Client Exception");
         }
 
-        Optional<NotarizationCert> certOptional =  verify(docBytes);
+        Optional<NotarizationCert> certOptional =  verifyPacket(docBytes);
 
         certOptional.ifPresentOrElse(
                 cert -> {
@@ -129,87 +137,6 @@ public class WebController {
                 });
 
         return "verification-result";
-    }
-
-
-    public Optional<NotarizationCert> verify(byte[] sourcePacket) {
-
-        Map<String, byte[]> packetItems = new HashMap<>();
-
-        //extract items from the zip source Packet
-        try (ByteArrayInputStream zipIS = new ByteArrayInputStream(sourcePacket);
-             ZipInputStream zis = new ZipInputStream(zipIS)) {
-
-            ZipEntry zipEntry = zis.getNextEntry();
-            while (zipEntry != null) {
-                if (!zipEntry.isDirectory()) {
-                    packetItems.put(zipEntry.getName(), zis.readAllBytes());
-                }
-
-                zipEntry = zis.getNextEntry();
-            }
-        } catch (IOException e) {
-            logger.error(e.getMessage());
-            return Optional.empty();
-        }
-
-        // check if 'certificate.json' exists
-        if (!packetItems.containsKey("certificate.json")) {
-            logger.error("Wrong sourcePacket");
-            return Optional.empty();
-        }
-
-        // convert the Json Certificate in a Certificate Object
-        Reader certReader = new InputStreamReader(new ByteArrayInputStream(packetItems.get("certificate.json"))
-                , StandardCharsets.UTF_8);
-        NotarizationCert sourceCertificate = new Gson().fromJson(certReader, NotarizationCert.class);
-
-
-        // verify if the certificate is not emply
-        if (sourceCertificate.checkNull()) {
-            logger.error("Empty certificate error");
-            return Optional.empty();
-        }
-
-        //
-        if (!packetItems.containsKey(sourceCertificate.getOriginalFileName())) {
-            logger.error("Wrong certificate error");
-            return Optional.empty();
-        }
-
-        // Conditions we need to verify
-        // (1) source computed document hash == blockchain-data document hash == certificate-data document hash
-        // (2) source computed packetName == blockchain-data sourcePacket name == certificate-data sourcePacket name
-        // (3) (Extra Optional) source doc Size == blockchain-data docSize == certificate-data docSize
-        // (4) (Extra Optional) source doc Name == blockchain-data docName == certificate-data docName
-
-        // get data from the specified tx
-        BlockchainData blockchainCert = algorandService.getTxData(sourceCertificate.getTxId());
-
-        // verify condition (1)
-        byte[] documentContent = packetItems.get(sourceCertificate.getOriginalFileName());
-        String sourceDocHash = DigestUtils.sha256Hex(documentContent);
-        String sourceCertDocHash = sourceCertificate.getBlockchainData().getDocumentHash();
-        String blockchainDocHash = blockchainCert.getDocumentHash();
-
-        boolean verify1 = sourceDocHash.equals(sourceCertDocHash)
-                && sourceCertDocHash.equals(blockchainDocHash);
-
-        // verify condition (2)
-        String sourcePaketCode = ACC_ADDRESS + sourceDocHash;
-        String sourcePacketName = DigestUtils.sha256Hex(sourcePaketCode.getBytes(StandardCharsets.UTF_8));
-        String sourceCertPacketName = sourceCertificate.getBlockchainData().getPacketName();
-        String blockchainPacketName = blockchainCert.getPacketName();
-
-        boolean verify2 = sourcePacketName.equals(sourceCertPacketName)
-                && sourcePacketName.equals(blockchainPacketName);
-
-
-        // verify if the info in the certificate are the same stored on the Blockchain
-        boolean verified = verify1 && verify2;
-
-        // return the certificate or an empty optional if the sourcePacket is not verified
-        return verified? Optional.of(sourceCertificate):Optional.empty();
     }
 
 
@@ -233,7 +160,8 @@ public class WebController {
         // create the Zip packet
         byte[] zipPacket =  storeService.createPacket(docBytes, notarizationCert);
 
-        String zipFileName = notarizationCert.getBlockchainData().getPacketName() + ".zip";
+        String zipFileName = notarizationCert.getBlockchainData().getPacketCode()
+                + "-" + Instant.now().getEpochSecond() + ".zip";
         return ResponseEntity.ok()
                 .contentLength(zipPacket.length)
                 .contentType(MediaType.APPLICATION_OCTET_STREAM)
@@ -256,7 +184,7 @@ public class WebController {
             throw new ApiException("Client Exception");
         }
 
-        Optional<NotarizationCert> certOptional =  verify(docBytes);
+        Optional<NotarizationCert> certOptional =  verifyPacket(docBytes);
 
         if (certOptional.isPresent()) {
             return certOptional.get();
@@ -268,11 +196,86 @@ public class WebController {
     }
 
 
-    // Exceptions
+    public Optional<NotarizationCert> verifyPacket(byte[] sourcePacket) {
 
-    @ExceptionHandler(ApiException.class)
-    public ResponseEntity<String> VerificationException(RuntimeException ex) {
-        return new ResponseEntity<>(ex.getMessage(), HttpStatus.NOT_FOUND);
+        Map<String, byte[]> packetItems = new HashMap<>();
+
+        //extract items from the zip source Packet
+        try (ByteArrayInputStream zipIS = new ByteArrayInputStream(sourcePacket);
+             ZipInputStream zis = new ZipInputStream(zipIS)) {
+
+            ZipEntry zipEntry = zis.getNextEntry();
+            while (zipEntry != null) {
+                if (!zipEntry.isDirectory()) {
+                    packetItems.put(zipEntry.getName(), zis.readAllBytes());
+                }
+                zipEntry = zis.getNextEntry();
+            }
+        } catch (IOException e) {
+            logger.error(e.getMessage());
+            return Optional.empty();
+        }
+
+        // check if 'certificate.json' exists
+        if (!packetItems.containsKey("certificate.json")) {
+            logger.error("Wrong sourcePacket");
+            return Optional.empty();
+        }
+
+        // convert the Json Certificate in a Certificate Object
+        Reader certReader = new InputStreamReader(new ByteArrayInputStream(packetItems.get("certificate.json"))
+                , StandardCharsets.UTF_8);
+        NotarizationCert packetCertificate = new Gson().fromJson(certReader, NotarizationCert.class);
+
+
+        //check if the certified document exists in the zip
+        if (!packetItems.containsKey(packetCertificate.getOriginalFileName())) {
+            logger.error("Wrong certificate error");
+            return Optional.empty();
+        }
+
+        // Conditions to verify:
+        // (1) <packet document hash> == <certificate document hash> == <blockchain document hash>
+        // (2) <certificate creator address> == <blockchain sender address>
+        // (3) <certificate block> == <blockchain block>
+
+
+        // get data from the specified Algorand tx
+        VerificationData verificationData;
+        try {
+            verificationData = algorandService.getDataFromTx(packetCertificate.getTxId());
+        }
+        catch (Exception e) {
+            logger.error("Cannot retrieve certificate from the blockchain");
+            return Optional.empty();
+        }
+
+        // Verify condition (1)
+        byte[] documentContent = packetItems.get(packetCertificate.getOriginalFileName());
+        String packetDocHash = DigestUtils.sha256Hex(documentContent);
+        String certificateDocHash = packetCertificate.getBlockchainData().getDocumentHash();
+        String blockchainDocHash = verificationData.getDocumentHash();
+
+        boolean verify1 = packetDocHash.equals(certificateDocHash)
+                && certificateDocHash.equals(blockchainDocHash);
+
+        // Verify condition (2)
+        boolean verify2 = packetCertificate.getCreatorAddr().equals(verificationData.getSenderAddr());
+
+        // Verify condition (3)
+        boolean verify3 = packetCertificate.getBlockNum() == verificationData.getBlockNum();
+
+        boolean verified = verify1 && verify2 && verify3;
+
+        // return the certificate or an empty optional if the sourcePacket is not verified
+        return verified? Optional.of(packetCertificate):Optional.empty();
+    }
+
+
+    // Exceptions
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<String> VerificationException(Exception ex) {
+        return new ResponseEntity<>(ex.getMessage(), HttpStatus.BAD_REQUEST);
     }
 
 

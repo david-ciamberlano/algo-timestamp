@@ -36,7 +36,7 @@
         </div>
         <div class="row">
             <div class="col-2">
-                <p class="text-end fw-bold" th:text="'Document Size: '"></p>
+                <p class="text-end fw-bold" th:text="'Document Size (bytes): '"></p>
             </div>
             <div class="col-10">
                 <p th:text="${certInfo.docSize}"></p>
@@ -44,10 +44,10 @@
         </div>
         <div class="row">
             <div class="col-2">
-                <p class="text-end fw-bold" th:text="'Packet Name: '"></p>
+                <p class="text-end fw-bold" th:text="'Packet Code: '"></p>
             </div>
             <div class="col-10">
-                <p th:text="${certInfo.blockchainData.packetName} + '.zip'"></p>
+                <p th:text="${certInfo.blockchainData.packetCode}"></p>
             </div>
         </div>
         <div class="row">
@@ -56,6 +56,14 @@
             </div>
             <div class="col-10">
                 <p th:text="${certInfo.blockchainData.documentHash}"></p>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-2">
+                <p class="text-end fw-bold" th:text="'Block #: '"></p>
+            </div>
+            <div class="col-10">
+                <p th:text="${certInfo.getBlockNum()}"></p></a>
             </div>
         </div>
         <div class="row">

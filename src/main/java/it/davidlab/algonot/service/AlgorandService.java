@@ -11,8 +11,9 @@ import com.algorand.algosdk.v2.client.common.Response;
 import com.algorand.algosdk.v2.client.model.*;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import it.davidlab.algonot.dom.NotarizationCert;
-import it.davidlab.algonot.dom.BlockchainData;
+import it.davidlab.algonot.domain.NotarizationCert;
+import it.davidlab.algonot.domain.BlockchainData;
+import it.davidlab.algonot.dto.VerificationData;
 import it.davidlab.algonot.exception.ApiException;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.slf4j.Logger;
@@ -30,7 +31,7 @@ import java.util.Map;
 
 
 @Service
-public class AlgorandService implements BlockchainServiceInterface {
+public class AlgorandService {
 
     private final Logger logger = LoggerFactory.getLogger(AlgorandService.class);
 
@@ -66,18 +67,17 @@ public class AlgorandService implements BlockchainServiceInterface {
         indexerClient = new IndexerClient(INDEXER_API_ADDR, INDEXER_API_PORT);
     }
 
-
-    @Override
     public NotarizationCert notarize(String docName, long docSize, byte[] docBytes) {
 
-        logger.info("Notarize on the blockchain");
+        logger.info("Try to notarize {} on the blockchain", docName);
 
         String docHash = DigestUtils.sha256Hex(docBytes);
 
-        String packetCodeName = ACC_ADDRESS + docHash;
-        String packetName = DigestUtils.sha256Hex(packetCodeName.getBytes(StandardCharsets.UTF_8));
+        // build the packet code (to obtain a unique packet name)
+        String packetName = ACC_ADDRESS + docHash;
+        String packetCode = DigestUtils.sha256Hex(packetName.getBytes(StandardCharsets.UTF_8));
 
-        BlockchainData blockchainData = new BlockchainData(APP_NAME, APP_VERSION, packetName, docHash);
+        BlockchainData blockchainData = new BlockchainData(APP_NAME, APP_VERSION, packetCode, docHash);
 
         // Build the json object
         Gson gson = new GsonBuilder().setDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ").create();
@@ -134,24 +134,20 @@ public class AlgorandService implements BlockchainServiceInterface {
 
 
 
-    public BlockchainData getTxData (String txId) {
+    public VerificationData getDataFromTx (String txId) throws Exception {
 
         // get info from algorand transaction
         BlockchainData blockchainData;
 
-        try {
-            com.algorand.algosdk.v2.client.model.Transaction tx = indexerClient.searchForTransactions().txid(txId).execute().body().transactions.get(0);
+        com.algorand.algosdk.v2.client.model.Transaction tx = indexerClient.searchForTransactions().txid(txId).execute().body().transactions.get(0);
 
-            String noteObject = new String(tx.note);
-            Gson gson = new GsonBuilder().setDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ").create();
-            blockchainData = gson.fromJson(noteObject, BlockchainData.class);
+        String noteObject = new String(tx.note);
+        Gson gson = new GsonBuilder().setDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ").create();
+        blockchainData = gson.fromJson(noteObject, BlockchainData.class);
 
-        } catch (Exception ex) {
-            logger.error("Algorand Client check Exception", ex);
-            throw new RuntimeException("Document content is null", ex);
-        }
+        return new VerificationData(blockchainData.getAppName(), blockchainData.getAppVersion(),
+                blockchainData.getPacketCode(), blockchainData.getDocumentHash(), tx.sender, tx.confirmedRound);
 
-        return blockchainData;
     }
 
 
@@ -162,7 +158,6 @@ public class AlgorandService implements BlockchainServiceInterface {
      * @param timeout
      * @throws Exception
      */
-    @Override
     public void waitForConfirmation(String txId, int timeout) throws Exception {
 
         Long txConfirmedRound = -1L;

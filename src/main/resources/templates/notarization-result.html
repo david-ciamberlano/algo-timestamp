@@ -33,15 +33,15 @@
                 <p class="text-end fw-bold" th:text="'Document Size: '"></p>
             </div>
             <div class="col-10">
-                <p th:text="${certInfo.docSize}"></p>
+                <p th:text="${certInfo.docSize} + ' bytes'"></p>
             </div>
         </div>
         <div class="row">
             <div class="col-2">
-                <p class="text-end fw-bold" th:text="'Packet Name: '"></p>
+                <p class="text-end fw-bold" th:text="'Packet Code: '"></p>
             </div>
             <div class="col-10">
-                <p th:text="${certInfo.blockchainData.packetName} + '.zip'"></p>
+                <p th:text="${certInfo.blockchainData.packetCode}"></p>
             </div>
         </div>
         <div class="row">
@@ -50,6 +50,14 @@
             </div>
             <div class="col-10">
                 <p th:text="${certInfo.blockchainData.documentHash}"></p>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-2">
+                <p class="text-end fw-bold" th:text="'Block #: '"></p>
+            </div>
+            <div class="col-10">
+                <p th:text="${certInfo.getBlockNum()}"></p></a>
             </div>
         </div>
         <div class="row">
@@ -64,7 +72,8 @@
     <!--    if packet is not valid-->
     <div th:unless="${valid}">
         <div class="container rounded border p-3 my-3">
-            <h1 class="text-danger">The packet is not Valid</h1>
+            <h1 class="text-danger">Notarization failed</h1>
+            <div class="text-mute" th:text="${message}"></div>
         </div>
     </div>
 

@@ -1,4 +1,6 @@
-package it.davidlab.algonot.dom;
+package it.davidlab.algonot.domain;
+
+import java.util.Objects;
 
 public class NotarizationCert {
 
@@ -20,16 +22,6 @@ public class NotarizationCert {
         this.blockNum = blockNum;
     }
 
-
-    public boolean checkNull() {
-        return
-            blockchainData == null ||
-            originalFileName  == null ||
-            docSize  == 0 ||
-            creatorAddr  == null ||
-            txId  == null ||
-            blockNum  == 0;
-    }
 
     public BlockchainData getBlockchainData() {
         return blockchainData;
@@ -55,16 +47,18 @@ public class NotarizationCert {
         return docSize;
     }
 
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof NotarizationCert)) return false;
+        NotarizationCert that = (NotarizationCert) o;
+        return docSize == that.docSize && blockNum == that.blockNum && blockchainData.equals(that.blockchainData)
+                && originalFileName.equals(that.originalFileName) && creatorAddr.equals(that.creatorAddr)
+                && txId.equals(that.txId);
+    }
 
     @Override
-    public String toString() {
-        return "NotarizationCert{" +
-                "blockchainData=" + blockchainData +
-                ", originalFileName='" + originalFileName + '\'' +
-                ", docSize=" + docSize +
-                ", creatorAddr='" + creatorAddr + '\'' +
-                ", txId='" + txId + '\'' +
-                ", blockNum=" + blockNum +
-                '}';
+    public int hashCode() {
+        return Objects.hash(blockchainData, originalFileName, docSize, creatorAddr, txId, blockNum);
     }
 }
