@@ -35,8 +35,6 @@ public class AlgorandService {
 
     private final Logger logger = LoggerFactory.getLogger(AlgorandService.class);
 
-//    @Value("${application.name}")
-//    private String APP_NAME;
     @Value("${application.version}")
     private String APP_VERSION;
 

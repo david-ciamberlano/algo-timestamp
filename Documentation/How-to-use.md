@@ -4,6 +4,13 @@ Info notarized in the blockchain (in the note field of a Tx):
 - Document hash
 
 
+To run the application:
+
+just unzip the packet. ù
+```
+java -jar algotimestamp-1.0-beta.jar
+```
+
 
 ## REST api
 

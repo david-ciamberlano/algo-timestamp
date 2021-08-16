@@ -35,7 +35,7 @@
                 <label for="note" class="visually-hidden">Note</label>
                 <input id="note" class="form-control" maxlength="128" placeholder="Note" type="text" name="note"/>
             </div>
-            <div class="col-2 d-grid" data-bs-toggle="modal" data-bs-target="#exampleModal">
+            <div class="col-2 d-grid" data-bs-toggle="modal" data-bs-target="#waitModal">
                 <button type="submit" class="btn btn-primary">Notarize</button>
             </div>
         </div>
@@ -58,22 +58,22 @@
 
 
 <!-- Modal -->
-<div class="modal fade" id="exampleModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+<div class="modal fade" id="waitModal" tabindex="-1" aria-labelledby="waitModalLabel" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="exampleModalLabel">Please wait</h5>
+            <div class="modal-header justify-content-center">
+                <h5 class="modal-title text-primary" id="waitModalLabel">Please wait</h5>
             </div>
             <div class="modal-body">
                 <div class="d-flex justify-content-center">
-                    <div class="spinner-grow width: 3rem; height: 3rem;" role="status">
+                    <div class="spinner-grow text-primary width: 3rem; height: 3rem;" role="status">
                         <span class="visually-hidden">working...</span>
                     </div>
                 </div>
             </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-            </div>
+<!--            <div class="modal-footer">-->
+<!--                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>-->
+<!--            </div>-->
         </div>
     </div>
 </div>

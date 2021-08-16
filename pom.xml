@@ -10,7 +10,7 @@
 	</parent>
 	<groupId>it.davidlab</groupId>
 	<artifactId>algotimestamp</artifactId>
-	<version>1.0-beta</version>
+	<version>0.9-beta</version>
 	<name>algonot</name>
 	<description>Algorand Notarization Project</description>
 	<properties>
