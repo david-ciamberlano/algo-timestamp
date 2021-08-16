@@ -4,20 +4,16 @@ import java.util.Objects;
 
 public class BlockchainData {
 
-    private final String appName;
     private final String appVersion;
     private final String packetCode;
     private final String documentHash;
+    private final String note;
 
-    public BlockchainData(String appName, String appVersion, String packetCode, String documentHash) {
-        this.appName = appName;
+    public BlockchainData(String appVersion, String packetCode, String documentHash, String note) {
         this.appVersion = appVersion;
         this.packetCode = packetCode;
         this.documentHash = documentHash;
-    }
-
-    public String getAppName() {
-        return appName;
+        this.note = note;
     }
 
     public String getAppVersion() {
@@ -32,18 +28,21 @@ public class BlockchainData {
         return packetCode;
     }
 
+    public String getNote() {
+        return note;
+    }
 
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
         if (!(o instanceof BlockchainData)) return false;
         BlockchainData that = (BlockchainData) o;
-        return appName.equals(that.appName) && appVersion.equals(that.appVersion)
-                && packetCode.equals(that.packetCode) && documentHash.equals(that.documentHash);
+        return appVersion.equals(that.appVersion) && packetCode.equals(that.packetCode)
+                && documentHash.equals(that.documentHash) && note.equals(that.note);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(appName, appVersion, packetCode, documentHash);
+        return Objects.hash(appVersion, packetCode, documentHash, note);
     }
 }

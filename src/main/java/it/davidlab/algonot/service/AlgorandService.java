@@ -35,8 +35,8 @@ public class AlgorandService {
 
     private final Logger logger = LoggerFactory.getLogger(AlgorandService.class);
 
-    @Value("${application.name}")
-    private String APP_NAME;
+//    @Value("${application.name}")
+//    private String APP_NAME;
     @Value("${application.version}")
     private String APP_VERSION;
 
@@ -67,17 +67,20 @@ public class AlgorandService {
         indexerClient = new IndexerClient(INDEXER_API_ADDR, INDEXER_API_PORT);
     }
 
-    public NotarizationCert notarize(String docName, long docSize, byte[] docBytes) {
+    public NotarizationCert notarize(String docName, String note, long docSize, byte[] docBytes) {
 
         logger.info("Try to notarize {} on the blockchain", docName);
+
+        //sanitize the address
+        String accountAddr = ACC_ADDRESS.trim();
 
         String docHash = DigestUtils.sha256Hex(docBytes);
 
         // build the packet code (to obtain a unique packet name)
-        String packetName = ACC_ADDRESS + docHash;
+        String packetName = accountAddr + docHash;
         String packetCode = DigestUtils.sha256Hex(packetName.getBytes(StandardCharsets.UTF_8));
 
-        BlockchainData blockchainData = new BlockchainData(APP_NAME, APP_VERSION, packetCode, docHash);
+        BlockchainData blockchainData = new BlockchainData(APP_VERSION, packetCode, docHash, note);
 
         // Build the json object
         Gson gson = new GsonBuilder().setDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ").create();
@@ -90,7 +93,7 @@ public class AlgorandService {
 
             // Notarize the document (write blockchainData on the blockchain)
             AlgodClient algoClient = new AlgodClient(ALGOD_API_ADDR, ALGOD_PORT, ALGOD_API_TOKEN);
-            Address algoAddress = new Address(ACC_ADDRESS);
+            Address algoAddress = new Address(accountAddr);
             Account algoAccount = new Account(ACC_PASSFRASE);
             TransactionParametersResponse params = algoClient.TransactionParams().execute().body();
             Transaction txn = Transaction.PaymentTransactionBuilder()
@@ -107,11 +110,13 @@ public class AlgorandService {
             txId = algoClient.RawTransaction().rawtxn(encodedTxBytes).execute().body().txId;
             waitForConfirmation(txId, 5);
 
+            logger.info("Documenent notarized: {}", docName);
+
             txRound = algoClient.PendingTransactionInformation(txId).execute().body().confirmedRound;
 
             Map<String, Object> block = algoClient.GetBlock(txRound).execute().body().block;
 
-            Integer timestamp = (Integer) block.get("ts");
+            long timestamp = ((Integer) block.get("ts")).longValue();
             DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSZ");
             txDate = ZonedDateTime
                     .ofInstant(Instant.ofEpochSecond(timestamp), ZoneId.systemDefault())
@@ -121,13 +126,13 @@ public class AlgorandService {
 
             // create the json certificate with the registration data
             NotarizationCert notarizationCert =
-                    new NotarizationCert(blockchainData, docName, docSize, ACC_ADDRESS, txId, txRound);
+                    new NotarizationCert(blockchainData, docName, docSize, accountAddr, txId, txRound, timestamp);
 
             return notarizationCert;
 
-        } catch (Exception ex) {
-            logger.error("Algorand Notarization Exception", ex);
-            throw new ApiException("Algorand NotarizationException");
+        } catch (Exception e) {
+            logger.error("Algorand Notarization Exception", e);
+            throw new RuntimeException(e.getMessage(), e);
 
         }
     }
@@ -145,8 +150,9 @@ public class AlgorandService {
         Gson gson = new GsonBuilder().setDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ").create();
         blockchainData = gson.fromJson(noteObject, BlockchainData.class);
 
-        return new VerificationData(blockchainData.getAppName(), blockchainData.getAppVersion(),
-                blockchainData.getPacketCode(), blockchainData.getDocumentHash(), tx.sender, tx.confirmedRound);
+        return new VerificationData(blockchainData.getNote(), blockchainData.getAppVersion(),
+                blockchainData.getPacketCode(), blockchainData.getDocumentHash(),
+                tx.sender, tx.confirmedRound, tx.roundTime);
 
     }
 

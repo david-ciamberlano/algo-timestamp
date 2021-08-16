@@ -2,25 +2,27 @@ package it.davidlab.algonot.dto;
 
 public class VerificationData {
 
-    private final String appName;
+     private final String note;
     private final String appVersion;
-    private final String packetCode;
-    private final String documentHash;
-    private final String senderAddr;
-    private final long blockNum;
+     private final String packetCode;
+     private final String documentHash;
+     private final String senderAddr;
+     private final long blockNum;
+    private final long timestamp;
 
-    public VerificationData(String appName, String appVersion, String packetCode, String documentHash,
-                            String senderAddr, long blockNum) {
-        this.appName = appName;
+    public VerificationData(String note, String appVersion, String packetCode, String documentHash,
+                            String senderAddr, long blockNum, long timestamp) {
+        this.note = note;
         this.appVersion = appVersion;
         this.packetCode = packetCode;
         this.documentHash = documentHash;
         this.senderAddr = senderAddr;
         this.blockNum = blockNum;
+        this.timestamp = timestamp;
     }
 
-    public String getAppName() {
-        return appName;
+    public String getNote() {
+        return note;
     }
 
     public String getAppVersion() {
@@ -41,5 +43,9 @@ public class VerificationData {
 
     public long getBlockNum() {
         return blockNum;
+    }
+
+    public long getTimestamp() {
+        return timestamp;
     }
 }

@@ -28,8 +28,12 @@
             </div>
         </div>
         <div class="row">
-            <div class="col-10">
+            <div class="col-6">
                 <input id="notFile" class="form-control" type="file" name="file"/>
+            </div>
+            <div class="col-4">
+                <label for="note" class="visually-hidden">Note</label>
+                <input id="note" class="form-control" maxlength="128" placeholder="Note" type="text" name="note"/>
             </div>
             <div class="col-2 d-grid" data-bs-toggle="modal" data-bs-target="#exampleModal">
                 <button type="submit" class="btn btn-primary">Notarize</button>

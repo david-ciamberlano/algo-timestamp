@@ -9,7 +9,7 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.5.0/font/bootstrap-icons.css">
 </head>
 <body>
-
+<div th:replace="fragments/nav"></div>
 <div class="container rounded border shadow p-3 my-3">
     <!--    If packet is valid-->
     <div th:if="${valid}">
@@ -20,54 +20,7 @@
                 <p class="lead text-primary">Certificate Information: </p>
             </div>
         </div>
-        <div class="row">
-            <div class="col-2">
-                <p class="text-end fw-bold" th:text="'Document Name: '"></p>
-            </div>
-            <div class="col-10">
-                <p th:text="${certInfo.originalFileName}"></p>
-            </div>
-        </div>
-        <div class="row">
-            <div class="col-2">
-                <p class="text-end fw-bold" th:text="'Document Size: '"></p>
-            </div>
-            <div class="col-10">
-                <p th:text="${certInfo.docSize} + ' bytes'"></p>
-            </div>
-        </div>
-        <div class="row">
-            <div class="col-2">
-                <p class="text-end fw-bold" th:text="'Packet Code: '"></p>
-            </div>
-            <div class="col-10">
-                <p th:text="${certInfo.blockchainData.packetCode}"></p>
-            </div>
-        </div>
-        <div class="row">
-            <div class="col-2">
-                <p class="text-end fw-bold" th:text="'Document Hash: '"></p>
-            </div>
-            <div class="col-10">
-                <p th:text="${certInfo.blockchainData.documentHash}"></p>
-            </div>
-        </div>
-        <div class="row">
-            <div class="col-2">
-                <p class="text-end fw-bold" th:text="'Block #: '"></p>
-            </div>
-            <div class="col-10">
-                <p th:text="${certInfo.getBlockNum()}"></p></a>
-            </div>
-        </div>
-        <div class="row">
-            <div class="col-2">
-                <p class="text-end fw-bold" th:text="'Transaction Id: '"></p>
-            </div>
-            <div class="col-10">
-                <a th:href="@{${explorerUrl}+${certInfo.txId}}"><span th:text="${certInfo.txId}"></span><i class="bi bi-link"></i></a>
-            </div>
-        </div>
+        <div th:replace="fragments/bcinfo"></div>
     </div>
     <!--    if packet is not valid-->
     <div th:unless="${valid}">

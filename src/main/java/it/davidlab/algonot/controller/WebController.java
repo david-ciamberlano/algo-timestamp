@@ -1,10 +1,8 @@
 package it.davidlab.algonot.controller;
 
 import com.google.gson.Gson;
-
 import it.davidlab.algonot.domain.NotarizationCert;
 import it.davidlab.algonot.dto.VerificationData;
-import it.davidlab.algonot.exception.ApiException;
 import it.davidlab.algonot.service.AlgorandService;
 import it.davidlab.algonot.service.StoreService;
 import org.apache.commons.codec.digest.DigestUtils;
@@ -13,12 +11,14 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.*;
@@ -34,9 +34,6 @@ import java.util.zip.ZipInputStream;
 public class WebController {
 
     private final Logger logger = LoggerFactory.getLogger(WebController.class);
-
-    @Value("${algorand.account.address}")
-    private String ACC_ADDRESS;
 
     @Value("${algorand.explorer.url}")
     private String EXPLORER_URL;
@@ -56,7 +53,8 @@ public class WebController {
 
 
     @PostMapping("notarize")
-    public String notarizeReq(@RequestParam("file") MultipartFile file, Model model) {
+    public String notarizeReq(@RequestParam("file") MultipartFile file,
+                              @RequestParam String note, Model model) {
 
         boolean notarizationSuccess = true;
         byte[] docBytes;
@@ -80,7 +78,7 @@ public class WebController {
 
         // notarize the document
         NotarizationCert notarizationCert
-                = algorandService.notarize(file.getOriginalFilename(), file.getSize(), docBytes);
+                = algorandService.notarize(file.getOriginalFilename(), note, file.getSize(), docBytes);
 
         // create the Zip packet
         byte[] zipPacketBytes = storeService.createPacket(docBytes, notarizationCert);
@@ -122,7 +120,7 @@ public class WebController {
         }
         catch (IOException e) {
             logger.error("Algorand Client creation Exception", e);
-            throw new ApiException("Client Exception");
+            throw new RuntimeException(e.getMessage(), e);
         }
 
         Optional<NotarizationCert> certOptional =  verifyPacket(docBytes);
@@ -132,9 +130,7 @@ public class WebController {
                     model.addAttribute("certInfo",cert);
                     model.addAttribute("valid", true);
                     model.addAttribute("explorerUrl", EXPLORER_URL);},
-                () -> {
-                    model.addAttribute("valid", false);
-                });
+                () -> model.addAttribute("valid", false));
 
         return "verification-result";
     }
@@ -142,7 +138,8 @@ public class WebController {
 
     @PostMapping(value = "/api/notarize", produces = MediaType.APPLICATION_OCTET_STREAM_VALUE)
     @ResponseBody
-    public ResponseEntity<byte[]> notarizizationApi(@RequestParam("file") MultipartFile file) {
+    public ResponseEntity<byte[]> notarizizationApi(@RequestParam("file") MultipartFile file,
+                                                    @RequestParam("note") String note) {
 
         byte[] docBytes;
         try {
@@ -150,12 +147,12 @@ public class WebController {
         }
         catch (IOException e) {
             logger.error("Algorand Client creation Exception", e);
-            throw new ApiException("Algorand Client creation Exception");
+            throw new RuntimeException(e.getMessage(), e);
         }
 
         // notarize the document
         NotarizationCert notarizationCert
-                = algorandService.notarize(file.getOriginalFilename(), file.getSize(), docBytes);
+                = algorandService.notarize(file.getOriginalFilename(), note, file.getSize(), docBytes);
 
         // create the Zip packet
         byte[] zipPacket =  storeService.createPacket(docBytes, notarizationCert);
@@ -181,7 +178,7 @@ public class WebController {
         }
         catch (IOException e) {
             logger.error("Algorand Client creation Exception", e);
-            throw new ApiException("Client Exception");
+            throw new RuntimeException(e.getMessage(), e);
         }
 
         Optional<NotarizationCert> certOptional =  verifyPacket(docBytes);
@@ -190,7 +187,7 @@ public class WebController {
             return certOptional.get();
         }
         else {
-            throw new ApiException("Verification Error");
+            throw new RuntimeException("Verification Error");
         }
 
     }
@@ -198,7 +195,7 @@ public class WebController {
 
     public Optional<NotarizationCert> verifyPacket(byte[] sourcePacket) {
 
-        Map<String, byte[]> packetItems = new HashMap<>();
+        Map<String, byte[]> packetItems = new HashMap<>(3);
 
         //extract items from the zip source Packet
         try (ByteArrayInputStream zipIS = new ByteArrayInputStream(sourcePacket);
@@ -272,11 +269,6 @@ public class WebController {
     }
 
 
-    // Exceptions
-    @ExceptionHandler(Exception.class)
-    public ResponseEntity<String> VerificationException(Exception ex) {
-        return new ResponseEntity<>(ex.getMessage(), HttpStatus.BAD_REQUEST);
-    }
 
 
 }

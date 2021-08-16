@@ -1,0 +1,67 @@
+<th:block layout:fragment="notInfo">
+  <div class="row">
+    <div class="col-2">
+      <p class="text-end fw-bold" th:text="'Packet Code: '"></p>
+    </div>
+    <div class="col-10">
+      <p th:text="${certInfo.blockchainData.packetCode}"></p>
+    </div>
+  </div>
+  <div class="row">
+    <div class="col-2">
+      <p class="text-end fw-bold" th:text="'Document Name: '"></p>
+    </div>
+    <div class="col-10">
+      <p th:text="${certInfo.originalFileName}"></p>
+    </div>
+  </div>
+  <div class="row">
+    <div class="col-2">
+      <p class="text-end fw-bold" th:text="'Document Size (bytes): '"></p>
+    </div>
+    <div class="col-10">
+      <p th:text="${certInfo.getHRSize()}"></p>
+    </div>
+  </div>
+  <div class="row">
+    <div class="col-2">
+      <p class="text-end fw-bold" th:text="'Document Hash: '"></p>
+    </div>
+    <div class="col-10">
+      <p th:text="${certInfo.blockchainData.documentHash}"></p>
+    </div>
+  </div>
+  <div class="row">
+    <div class="col-2">
+      <p class="text-end fw-bold" th:text="'Creator address: '"></p>
+    </div>
+    <div class="col-10">
+      <p th:text="${certInfo.creatorAddr}"></p></a>
+    </div>
+  </div>
+  <div class="row">
+    <div class="col-2">
+      <p class="text-end fw-bold" th:text="'Block #: '"></p>
+    </div>
+    <div class="col-10">
+      <p th:text="${certInfo.blockNum}"></p></a>
+    </div>
+  </div>
+  <div class="row">
+    <div class="col-2">
+      <p class="text-end fw-bold" th:text="'Notarization Time: '"></p>
+    </div>
+    <div class="col-10">
+      <p th:text="${certInfo.getFormattedDate()}"></p>
+    </div>
+  </div>
+  <div class="row">
+    <div class="col-2">
+      <p class="text-end fw-bold" th:text="'Transaction Id: '"></p>
+    </div>
+    <div class="col-10">
+      <a th:href="@{${explorerUrl}+${certInfo.txId}}"><span th:text="${certInfo.txId}"></span>
+        <i class="bi bi-link"></i></a>
+    </div>
+  </div>
+</th:block>
