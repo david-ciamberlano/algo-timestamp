@@ -28,6 +28,7 @@ import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Map;
+import java.util.Optional;
 
 
 @Service
@@ -65,7 +66,7 @@ public class AlgorandService {
         indexerClient = new IndexerClient(INDEXER_API_ADDR, INDEXER_API_PORT);
     }
 
-    public NotarizationCert notarize(String docName, String note, long docSize, byte[] docBytes) {
+    public Optional<NotarizationCert> notarize(String docName, String note, long docSize, byte[] docBytes) {
 
         logger.info("Try to notarize {} on the blockchain", docName);
 
@@ -112,28 +113,21 @@ public class AlgorandService {
 
             txRound = algoClient.PendingTransactionInformation(txId).execute().body().confirmedRound;
 
-            Map<String, Object> block = algoClient.GetBlock(txRound).execute().body().block;
-
-            long timestamp = ((Integer) block.get("ts")).longValue();
-            DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSZ");
-            txDate = ZonedDateTime
-                    .ofInstant(Instant.ofEpochSecond(timestamp), ZoneId.systemDefault())
-                    .format(dateFormatter);
-
-            logger.info("Document Notarized - date: {}", txDate);
+            long timestamp = Instant.now().getEpochSecond();
 
             // create the json certificate with the registration data
             NotarizationCert notarizationCert =
                     new NotarizationCert(blockchainData, docName, docSize, accountAddr, txId, txRound, timestamp);
 
-            return notarizationCert;
+            return Optional.of(notarizationCert);
 
         } catch (Exception e) {
             logger.error("Algorand Notarization Exception", e);
-            throw new RuntimeException(e.getMessage(), e);
-
+            return Optional.empty();
         }
     }
+
+
 
 
 

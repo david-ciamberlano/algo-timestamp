@@ -18,7 +18,6 @@ public class NotarizationCert {
     private final long blockNum;
     private final long timestamp;
 
-
     public NotarizationCert(BlockchainData blockchainData, String originalFileName, long docSize, String creatorAddr,
                             String txId, long blockNum, long timestamp) {
         this.blockchainData = blockchainData;

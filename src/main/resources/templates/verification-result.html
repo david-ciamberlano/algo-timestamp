@@ -22,10 +22,12 @@
         </div>
         <div th:replace="fragments/bcinfo"></div>
     </div>
-<!--    if packet is not valid-->
+
+    <!-- if packet is not valid-->
     <div th:unless="${valid}">
         <div class="container rounded border p-3 my-3">
             <h1 class="text-danger">The packet is not Valid</h1>
+            <div class="text-mute" th:text="'Error: ' + ${message}"></div>
         </div>
     </div>
 

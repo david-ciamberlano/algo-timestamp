@@ -3,6 +3,7 @@ package it.davidlab.algonot.controller;
 import com.google.gson.Gson;
 import it.davidlab.algonot.domain.NotarizationCert;
 import it.davidlab.algonot.dto.VerificationData;
+import it.davidlab.algonot.exception.ApiException;
 import it.davidlab.algonot.service.AlgorandService;
 import it.davidlab.algonot.service.StoreService;
 import org.apache.commons.codec.digest.DigestUtils;
@@ -77,15 +78,21 @@ public class WebController {
         }
 
         // notarize the document
-        NotarizationCert notarizationCert
+        Optional<NotarizationCert> notarizationCertOpt
                 = algorandService.notarize(file.getOriginalFilename(), note, file.getSize(), docBytes);
 
+        if (notarizationCertOpt.isEmpty()) {
+            model.addAttribute("valid", false);
+            model.addAttribute("message", "Notarization error");
+            return "notarization-result";
+        }
+
         // create the Zip packet
-        byte[] zipPacketBytes = storeService.createPacket(docBytes, notarizationCert);
+        byte[] zipPacketBytes = storeService.createPacket(docBytes, notarizationCertOpt.get());
 
         // save the packet
 
-        String zipFileName = notarizationCert.getBlockchainData().getPacketCode()
+        String zipFileName = notarizationCertOpt.get().getBlockchainData().getPacketCode()
                 + "-" + Instant.now().getEpochSecond() + ".zip";
         File zipFile = new File(zipFileName);
 
@@ -100,7 +107,7 @@ public class WebController {
 
         if (notarizationSuccess) {
             model.addAttribute("explorerUrl", EXPLORER_URL);
-            model.addAttribute("certInfo", notarizationCert);
+            model.addAttribute("certInfo", notarizationCertOpt.get());
             model.addAttribute("valid", true);
         }
         else {
@@ -120,7 +127,9 @@ public class WebController {
         }
         catch (IOException e) {
             logger.error("Algorand Client creation Exception", e);
-            throw new RuntimeException(e.getMessage(), e);
+            model.addAttribute("valid", false);
+            model.addAttribute("message", "Cannot read the file");
+            return "verification-result";
         }
 
         Optional<NotarizationCert> certOptional =  verifyPacket(docBytes);
@@ -130,7 +139,10 @@ public class WebController {
                     model.addAttribute("certInfo",cert);
                     model.addAttribute("valid", true);
                     model.addAttribute("explorerUrl", EXPLORER_URL);},
-                () -> model.addAttribute("valid", false));
+                () -> {
+                    model.addAttribute("message", "Certification failed");
+                    model.addAttribute("valid", false);
+                });
 
         return "verification-result";
     }
@@ -141,23 +153,29 @@ public class WebController {
     public ResponseEntity<byte[]> notarizizationApi(@RequestParam("file") MultipartFile file,
                                                     @RequestParam("note") String note) {
 
+        byte[] zipPacket = {};
         byte[] docBytes;
         try {
             docBytes = file.getBytes();
         }
         catch (IOException e) {
             logger.error("Algorand Client creation Exception", e);
-            throw new RuntimeException(e.getMessage(), e);
+            return ResponseEntity.badRequest().body(zipPacket);
         }
 
         // notarize the document
-        NotarizationCert notarizationCert
+        Optional<NotarizationCert> notarizationCertOpt
                 = algorandService.notarize(file.getOriginalFilename(), note, file.getSize(), docBytes);
 
-        // create the Zip packet
-        byte[] zipPacket =  storeService.createPacket(docBytes, notarizationCert);
 
-        String zipFileName = notarizationCert.getBlockchainData().getPacketCode()
+        if (notarizationCertOpt.isEmpty()) {
+            return ResponseEntity.badRequest().body(zipPacket);
+        }
+
+        // create the Zip packet
+        zipPacket =  storeService.createPacket(docBytes, notarizationCertOpt.get());
+
+        String zipFileName = notarizationCertOpt.get().getBlockchainData().getPacketCode()
                 + "-" + Instant.now().getEpochSecond() + ".zip";
         return ResponseEntity.ok()
                 .contentLength(zipPacket.length)
@@ -178,7 +196,7 @@ public class WebController {
         }
         catch (IOException e) {
             logger.error("Algorand Client creation Exception", e);
-            throw new RuntimeException(e.getMessage(), e);
+            throw new ApiException();
         }
 
         Optional<NotarizationCert> certOptional =  verifyPacket(docBytes);
@@ -187,7 +205,7 @@ public class WebController {
             return certOptional.get();
         }
         else {
-            throw new RuntimeException("Verification Error");
+            throw new ApiException();
         }
 
     }
@@ -195,7 +213,7 @@ public class WebController {
 
     public Optional<NotarizationCert> verifyPacket(byte[] sourcePacket) {
 
-        Map<String, byte[]> packetItems = new HashMap<>(3);
+        Map<String, byte[]> packetItems = new HashMap<>(5);
 
         //extract items from the zip source Packet
         try (ByteArrayInputStream zipIS = new ByteArrayInputStream(sourcePacket);
