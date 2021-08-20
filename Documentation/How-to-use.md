@@ -10,7 +10,9 @@ The only data sent over the Internet and stored in the blockchain are hash codes
 See the License for the specific language governing permissions and limitations under the License.
 
 ## Download and run precompiled package
-Go to [algo-timestamp github releases](https://github.com/david-ciamberlano/algo-timestamp/releases) (in the *"assets list"*) and download the latest *algotimestamp-dist.zip* package
+Go to [algo-timestamp github releases](https://github.com/david-ciamberlano/algo-timestamp/releases), then open the "assets list" menu and download the latest algotimestamp-dist.zip package.
+
+At the moment the latest distribution is the [0.9-beta](https://github.com/david-ciamberlano/algo-timestamp/releases/download/v0.9-beta.1/algotimestamp-0.9-beta.zip)
 
 Unzip the package. In the algotimestamp-dist folders there will be two files:
 - algotimestamp-X.X.jar
