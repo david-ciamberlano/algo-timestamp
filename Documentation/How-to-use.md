@@ -1,23 +1,24 @@
 # Algo-timestamp
-Algo-timestamp is a standalone application that allows you to notarize documents on the Algorand Blockchain. (For more details on the "Notarization" process, read the Whitepaper.md file)
+Algo-timestamp is a standalone java web application that allows you to notarize documents on the Algorand Blockchain. (For more details on the "Notarization" process, read the Whitepaper.md file)
 
-You can execute it on your own computer using the built-in user interface or (since it can be called via REST API) as-a-service.
-In both cases, your sensitive information (like you account address and passphrase or the document you want to notarize) never leave your computer.
+You can run it on your own computer using the built-in user interface or (since it can be called via REST API) as-a-service.
+
+In both cases, your sensitive information (such as you account address and passphrase or the document you want to notarize) never leaves your computer.
 The only data sent over the Internet and stored in the blockchain are hash codes from which is not possibile to obtain the original source.
 
 **IMPORTANT NOTE**: this software is not intended for production or legal use. It is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and limitations under the License.
 
-## Download and execute precompiled package
-Go to [algo-timestamp github releases](https://github.com/david-ciamberlano/algo-timestamp/releases) (in the assets list) and download the last algotimestamp-dist.zip package
+## Download and run precompiled package
+Go to [algo-timestamp github releases](https://github.com/david-ciamberlano/algo-timestamp/releases) (in the *"assets list"*) and download the latest *algotimestamp-dist.zip* package
 
 Unzip the package. In the algotimestamp-dist folders there will be two files:
 - algotimestamp-X.X.jar
 - application.properties
 
-The first one is the java application. The second one is a configuration file that you need to modify before starting the application (see below) 
+The first one is the java application. The second one is a configuration file that you need to edit before starting the application (see below) 
 
-**Note**: In alternative you can compile your own packet. See the appendix to this document for more information
+**Note**: Alternatively, you can compile your own java from the source code. See the appendix to this document for more information
 
 ### Prerequisites
 In order to run algo-timestamp you need java 11 or later (the latest release is here: https://jdk.java.net/16/).
@@ -26,7 +27,7 @@ you can check if you have correctly installed the java Runtime Environment (JRE)
 ```
 java --version
 ```
-You should read something similar to (in this case java 15 is installed):
+You should get output similar to this (in this case java 15 is installed):
 ```
 openjdk 15.0.2 2021-01-19
 OpenJDK Runtime Environment (build 15.0.2+7-27)
@@ -36,44 +37,46 @@ OpenJDK 64-Bit Server VM (build 15.0.2+7-27, mixed mode, sharing)
 ### Configurations
 Before running the algo-timestamp application, you have to edit the "application.properties" file.
 
-1) you have to put your algorand wallet passfrase and the relative account address in the following properties 
-(replace the text between the angle brackets <> as in the following example. It's important to not add spaces after 
-   the '=' character and at the end of the text).
+1) you have to put your Algorand Wallet passfrase and its account address in the following properties (replace the text between the angle brackets <> as in the following example. It's important to not add spaces after the '=' character and at the end of the text):
 ```
 algorand.account.passfrase=<replace-this-with-your-wallet-passfrase>
 algorand.account.address=<replace-this-with-your-account-address>
 ```
+
+```
+EXAMPLE:
+algorand.account.passfrase=alpha bravo charlie delta echo foxtrox golf [...]
+algorand.account.address=ABCDEFGHI0123456789
+```
 NOTE: your passfrase and address are only stored locally and never leave your computer!
-Anyway, for more security, it's recommended to use a newly created account with a few Algo in it.
+However, for extra security, it's recommended to use a newly created account with only a few Algos in it.
+
+Notarize a document only cost 0.001 Algo (the standard transaction fee) so you can notarize thousands of documents by spending just a few Algos.
 
 **Don't use your principal Algorand accounts**
 
-Notarize a document only cost 0.001 Algo (the standard transaction fee) so you can notarize thousands of documents spending just a few Algo.
-
-If you have your personal node you can change the other properties... otherwise you can leave the default values. 
+If you have your personal node you can change the other properties (commented)... otherwise you can leave the default values. 
 
 After changing the properties, you are ready to run the application.
 
 ## The user interface
 
-To start Algo-timestamp, you can just open a terminal and write:
+To start Algo-timestamp, you can simply open a shell and type:
 
 ```
-java -jar algotimestamp-1.0-beta.jar
+java -jar algotimestamp-X.X.jar
 ```
 
-Open the following url in your browser: `http://localhost:8080`
-The user interface is really simple: just two forms, one for Notarize a document, the other one to verify a packet.
+After a few seconds, the application will be ready and you can use it by opening the following URL in a browser: `http://localhost:8080`
+The user interface is very simple: just two forms, one for Notarize a document, the other to verify a packet.
 
 ![Algotimestamp starting page](images/algotimestamp-ux.png)
 
 ### Notarize a document
-In the "Notarize a Document" form, you can select a document (file) and optionally add a note.
-Click the "Notarize" button when done. 
+In the "Notarize a Document" form, you can select a document and optionally add a text note. The default max size for the file is set to 100Mb (but you can change this).
+You can now click on the "Notarize" button to perform the registration on the blockchain.
 
-After a few seconds the zip packet (with a long alphanumeric name) will be created on your hard drive, 
-in the same folder of the jar application, and you will be redirected to a summary page that contain 
-useful notarization information: 
+After a few seconds the zip packet (with a long alphanumeric name) will be created on your hard drive, in the same folder of the jar application, and you will be redirected to a summary page that contain useful notarization information: 
 - Packet Code: alphanumeric code (it's also the first part of the packet name)
 - Document Name: the name of the document that was notarized
 - Document Size: the size of the document
@@ -87,8 +90,8 @@ useful notarization information:
 
 ### Verify a packet
 To verify a packet, just select it in the "Verify Packet" form and click on the "Verify" Button.
-After a few seconds you will be redirected to a summary page that Validate (or reject) the Notarization
-The information showed are the same we have after a succesfull notarization (see previous paragraph).
+After a few seconds you will be redirected to a summary page that Validates (or rejects) the Notarization
+The information shown is the same as we have after a succesfull notarization (see previous section).
 
 ![Algotimestamp - Verification summary](images/algotimestamp-verify-summary.png)
 
@@ -96,6 +99,9 @@ The information showed are the same we have after a succesfull notarization (see
 
 ## REST api
 Algo-timestamp exposes two Rest endpoint:
+
+- **api/notarize** -> to notarize a document
+- **api/verify** -> to verify a document
 
 ### /api/notarize
 

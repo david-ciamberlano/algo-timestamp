@@ -35,7 +35,9 @@ This is exactly the same procedure used by the digital signature process.
 One of the fields registered in the transaction is the sender’s account address. Since the sender is the only one who has the private key of that address, he is the only one who can certify that he has made that specific transaction at that specific time toward that specific wallet.
 
 ## The Algo-timestamp Packet
-After each notarization
-The notarization packet is just a zip file (with a very long name).
-It contains a copy of the notarized document and a certificate file (in json format).
+The application produces a packet (just a zip file with a very long name) that can be stored anywhere and contains:
+- a copy of the notarized document 
+- a certificate (in json format) that contains all the information needed to verify the notarization.
+
+Your sensitive information (such as you account address and passphrase,  the document you want to notarize and the certificate) is stored locally and never leaves your computer.
 
